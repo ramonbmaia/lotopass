@@ -1,0 +1,1837 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>LOTOPASS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Loteria Pro">
+    <link rel="apple-touch-icon" href="https://placehold.co/180x180/1a202c/ffffff?text=LP">
+    
+    <style>
+        /* --- VARIÁVEIS GLOBAIS DE CORES --- */
+        :root {
+            --bg-color-start: #111827; --bg-color-mid1: #1e3a8a; --bg-color-mid2: #4c1d95; --bg-color-end: #0891b2;
+            --mega-sena-color: #209869; --lotofacil-color: #930089; --quina-color: #260085;
+            --lotomania-color: #F78100; --dupla-sena-color: #AF0E00; --milionaria-color: #0066AE;
+        }
+        /* --- ESTILOS GERAIS E ANIMAÇÃO DE FUNDO --- */
+        body { 
+            font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent;
+            background: linear-gradient(-45deg, var(--bg-color-start), var(--bg-color-mid1), var(--bg-color-mid2), var(--bg-color-end));
+            background-size: 400% 400%; animation: gradientBG 20s ease infinite;
+        }
+        @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        
+        /* --- ESTILOS DE COMPONENTES --- */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-radius: 1.25rem; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .input-ball { cursor: pointer; transition: all 0.2s ease-in-out; }
+        .input-ball.winner { background-color: #22c55e !important; transform: scale(1.1); box-shadow: 0 0 15px rgba(34, 197, 94, 0.7); }
+        .input-ball input { background: transparent; border: none; text-align: center; width: 100%; height: 100%; color: white; font-weight: 600; outline: none; }
+        .input-ball input.invalid { border: 1px solid #f87171; border-radius: 50%; }
+        .input-ball input::placeholder { color: rgba(255,255,255,0.4); }
+        .modal-backdrop, .modal-content { transition: all 0.3s ease-in-out; }
+        .modal-backdrop { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+        .hidden-start { display: none; }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        .custom-select {
+            -webkit-appearance: none; -moz-appearance: none; appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .custom-select:focus {
+             outline: 2px solid transparent; outline-offset: 2px;
+             --tw-ring-color: rgb(56 189 248 / 0.5); box-shadow: 0 0 0 2px var(--tw-ring-color);
+        }
+        .custom-select option { background-color: #1f2937; color: white; }
+        .drag-handle { cursor: grab; }
+        .sortable-ghost { opacity: 0.4; background: rgba(34, 211, 238, 0.2); border-radius: 1.25rem; }
+        .drag-over {
+            border-color: #22d3ee !important;
+            transform: scale(1.02);
+            background-color: rgba(17, 94, 89, 0.3);
+        }
+        
+        /* --- ESTILOS DO BOTÃO DE AÇÃO FLUTUANTE (FAB) --- */
+        .fab-container { position: relative; }
+        .fab-options {
+            position: absolute; top: 110%; left: 50%;
+            display: flex; flex-direction: column; align-items: center; gap: 1rem;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            opacity: 0; visibility: hidden; transform-origin: top center;
+            transform: translateX(-50%) scale(0.95) translateY(-10px);
+        }
+        .fab-container.open .fab-options {
+            opacity: 1; visibility: visible; transform: translateX(-50%) scale(1) translateY(0);
+        }
+        .fab-options button { width: 260px; white-space: normal; }
+        .fab-main-button { transition: transform 0.3s ease; }
+        .fab-container.open .fab-main-button { transform: rotate(135deg); }
+        .fab-blur-overlay {
+            background-color: rgba(17, 24, 39, 0.3);
+            backdrop-filter: blur(0);
+            transition: backdrop-filter 0.3s ease-in-out;
+            pointer-events: none; opacity: 0;
+        }
+        .fab-blur-overlay.active {
+            backdrop-filter: blur(4px); pointer-events: auto; opacity: 1;
+        }
+        
+        /* --- ESTILOS DO GRÁFICO DE PIZZA --- */
+        .pie-chart {
+            width: 150px; height: 150px; border-radius: 50%;
+            background-image: conic-gradient(from 0deg, #f87171 0% var(--spent-percent, 50%), #4ade80 var(--spent-percent, 50%) 100%);
+            display: flex; align-items: center; justify-content: center;
+        }
+        
+        /* --- ESTILOS DA NUVEM DE PALAVRAS (WORD CLOUD) --- */
+        .word-cloud-item {
+            font-size: var(--font-size);
+            color: var(--text-color);
+            font-weight: 700;
+            transition: all 0.2s ease-in-out;
+        }
+        .word-cloud-item:hover {
+            filter: brightness(1.25);
+        }
+
+        /* --- ESTILOS DO LETREIRO (TICKER) --- */
+        .ticker-container {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            background: linear-gradient(90deg, rgba(0,0,0,0.2), rgba(0,0,0,0.4), rgba(0,0,0,0.2));
+            padding: 0.1rem 0;
+        }
+        .ticker-container:hover .ticker-content {
+            animation-play-state: paused;
+        }
+        .ticker-content {
+            display: flex;
+            will-change: transform;
+            animation: ticker-scroll 80s linear infinite; /* Rolagem mais lenta e suave */
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #d1d5db;
+        }
+        .ticker-content-item {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 2.5rem; /* Maior espaçamento */
+            flex-shrink: 0;
+        }
+        .ticker-game-name {
+            font-weight: 700;
+            text-transform: uppercase;
+            /* Sombra para melhorar contraste, especialmente para o azul da Quina */
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.7);
+        }
+        .ticker-prize {
+            font-weight: 600;
+            color: #facc15; /* Dourado para destacar o prêmio */
+            margin-left: 0.75rem;
+        }
+        .text-mega-sena { color: var(--mega-sena-color); }
+        .text-lotofacil { color: var(--lotofacil-color); }
+        .text-quina { color: var(--quina-color); }
+        .text-lotomania { color: var(--lotomania-color); }
+        .text-dupla-sena { color: var(--dupla-sena-color); }
+        .text-milionaria { color: var(--milionaria-color); }
+        @keyframes ticker-scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+    </style>
+</head>
+<body class="text-white h-full overflow-hidden">
+    <div id="fab-blur-overlay" class="fab-blur-overlay fixed inset-0 z-30"></div>
+
+    <div id="loading-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900">
+         <svg class="animate-spin h-8 w-8 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+    </div>
+    
+    <div id="auth-screen" class="fixed inset-0 z-40 flex-col items-center justify-center p-6 hidden-start">
+        <div class="w-full max-w-sm text-center">
+            <div class="glass-card p-8">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-cyan-300 mb-4"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                <h1 class="text-3xl font-bold mb-2">Loteria Pro</h1>
+                <p class="text-gray-300 mb-8">Acesse sua conta para continuar.</p>
+                <form id="auth-form" class="space-y-4">
+                    <input type="email" id="email" class="bg-white/10 text-white placeholder-gray-400 w-full rounded-lg p-3 focus:ring-2 focus:ring-cyan-400 border-0" placeholder="Seu e-mail" required>
+                    <input type="password" id="password" class="bg-white/10 text-white placeholder-gray-400 w-full rounded-lg p-3 focus:ring-2 focus:ring-cyan-400 border-0" placeholder="Sua senha" required>
+                    <p id="auth-error" class="text-red-400 h-5 text-sm"></p>
+                    <button type="submit" id="login-button" class="w-full bg-cyan-500 hover:bg-cyan-600 rounded-lg p-3 font-semibold transition-all">Entrar</button>
+                    <button type="button" id="signup-button" class="w-full bg-white/20 hover:bg-white/30 rounded-lg p-3 font-semibold transition-all">Criar Conta</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-screen" class="h-full flex-col hidden-start">
+        <header class="sticky top-0 bg-black/20 backdrop-blur-sm z-20 border-b border-white/10">
+            <div class="p-4 flex justify-between items-center w-full">
+                <div class="flex items-center gap-4">
+                    <h1 class="text-xl font-bold whitespace-nowrap">LOTOPASS</h1>
+                    <button id="analytics-button" class="text-gray-300 hover:text-white" title="Análise Anual">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+                    </button>
+                </div>
+                <div class="flex items-center gap-4 whitespace-nowrap pl-6">
+                    <button id="undo-button" class="text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed" title="Desfazer" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
+                    </button>
+                    <button id="redo-button" class="text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed" title="Refazer" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17v-6h6"/><path d="M21 7a9 9 0 0 1-9 9 9 9 0 0 1-6-2.3l-3-2.7"/></svg>
+                    </button>
+                    <button id="logout-button" class="text-gray-300 hover:text-white" title="Sair"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+                </div>
+            </div>
+            <div id="lottery-ticker-container" class="ticker-container border-t border-white/10 py-2">
+                <div id="lottery-ticker-content" class="ticker-content"></div>
+            </div>
+        </header>
+
+        <main class="flex-grow overflow-y-auto p-4 md:p-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                
+                <div class="md:col-span-1 lg:col-span-1 space-y-6 order-1">
+                    
+                    <div class="flex justify-center items-center gap-4 mb-6">
+                        <div id="fab-container" class="fab-container z-40">
+                             <div class="fab-options">
+                                <button id="add-bet-button" class="text-left bg-green-500/80 hover:bg-green-500 p-3 rounded-xl flex items-start gap-3 transition-all shadow-lg" title="Registrar Aposta">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-80 flex-shrink-0 mt-1"><path d="M2 12.38A10 10 0 1 1 12.38 22 10 10 0 0 1 2 12.38z"/><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 12a5 5 0 0 0 5-5"/></svg>
+                                    <div>
+                                        <p class="font-semibold text-sm">Registrar Aposta</p>
+                                        <p class="text-xs font-normal text-green-100 mt-1">Registre o custo e as modalidades de um jogo.</p>
+                                    </div>
+                                </button>
+                                <button id="generate-bet-button" class="text-left bg-cyan-500/80 hover:bg-cyan-500 p-3 rounded-xl flex items-start gap-3 transition-all shadow-lg" title="Gerador de Apostas">
+                                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-80 flex-shrink-0 mt-1"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M16 8h.01M12 12h.01M8 16h.01M8 8h.01M12 8h.01M16 12h.01M16 16h.01M8 12h.01"></path></svg>
+                                   <div>
+                                       <p class="font-semibold text-sm">Gerador de Apostas</p>
+                                       <p class="text-xs font-normal text-cyan-100 mt-1">Crie jogos com base em estatísticas e lógicas.</p>
+                                   </div>
+                                </button>
+                            </div>
+                            <button id="fab-main-button" class="fab-main-button bg-indigo-600 hover:bg-indigo-700 rounded-full w-16 h-16 flex items-center justify-center text-white shadow-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            </button>
+                        </div>
+                    </div>
+
+					<div id="date-navigator-container" class="bg-gray-900/50 rounded-2xl p-3 border border-white/10 flex items-center justify-center gap-2 text-lg">
+                        <button id="prev-year-button" class="p-2 rounded-full hover:bg-white/10 transition-all" title="Ano Anterior">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
+                        </button>
+                        <button id="prev-month-button" class="p-2 rounded-full hover:bg-white/10 transition-all" title="Mês Anterior">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                        <div id="nav-date-display" class="text-2xl select-none w-28 text-center">
+                            <span id="nav-month-display" class="font-bold text-cyan-400"></span><span id="nav-year-display" class="text-white font-light"></span>
+                        </div>
+                        <button id="next-month-button" class="p-2 rounded-full hover:bg-white/10 transition-all" title="Próximo Mês">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </button>
+                        <button id="next-year-button" class="p-2 rounded-full hover:bg-white/10 transition-all" title="Próximo Ano">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"></polyline><polyline points="6 17 11 12 6 7"></polyline></svg>
+                        </button>
+                    </div>
+
+                    <div class="bg-gray-900/50 rounded-2xl p-4 border border-white/10 space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    <p class="text-sm text-gray-300">Total Gasto</p>
+                                    <button id="bet-history-button" class="text-gray-400 hover:text-white" title="Histórico de Gastos">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M12 8v4l2 2"/></svg>
+                                    </button>
+                                </div>
+                                <p id="total-spent" class="text-2xl font-semibold text-red-400 mt-1">R$ 0,00</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    <p class="text-sm text-gray-300">Total Ganho</p>
+                                    <button id="prize-history-button" class="text-gray-400 hover:text-white" title="Histórico de Prêmios">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M12 8v4l2 2"/></svg>
+                                    </button>
+                                </div>
+                                <p id="total-won" class="text-2xl font-semibold text-green-400 mt-1">R$ 0,00</p>
+                            </div>
+                        </div>
+                        <div class="border-t border-white/10 pt-4 text-center">
+                             <p class="text-sm text-gray-300">Valor a Resgatar</p>
+                             <p id="prizes-to-claim-value" class="text-2xl font-semibold text-cyan-400 mt-1">R$ 0,00</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-900/50 rounded-2xl p-4 border border-white/10">
+                        <h3 class="text-base font-bold mb-3 text-center">Modalidades Premiadas no Mês</h3>
+                        <div id="word-cloud-container" class="min-h-[120px] flex flex-wrap gap-x-4 gap-y-2 justify-center items-center p-2">
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="main-modules-container" class="md:col-span-3 lg:col-span-4 space-y-6 order-2">
+                    <div class="dashboard-module glass-card overflow-hidden" data-module-id="pending-bets">
+                        <h2 class="text-lg font-bold p-4 flex items-center justify-between border-b border-white/10">
+                            <span>Apostas Aguardando Resultado</span>
+                            <svg class="drag-handle text-gray-500 hover:text-white" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path></svg>
+                        </h2>
+                        <div id="pending-bets-container" class="space-y-3 p-4"></div>
+                    </div>
+                    <div class="dashboard-module glass-card overflow-hidden" data-module-id="prizes-to-claim">
+                        <h2 class="text-lg font-bold p-4 flex items-center justify-between border-b border-white/10">
+                            <span>Prêmios a Resgatar</span>
+                            <svg class="drag-handle text-gray-500 hover:text-white" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path></svg>
+                        </h2>
+                        <div id="prizes-to-claim-container" class="space-y-3 p-4"></div>
+                    </div>
+                    <div class="dashboard-module glass-card overflow-hidden" data-module-id="recent-prizes">
+                        <h2 class="text-lg font-bold p-4 flex items-center justify-between border-b border-white/10">
+                           <span>Prêmios Recentes (Mês)</span>
+                           <svg class="drag-handle text-gray-500 hover:text-white" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path></svg>
+                        </h2>
+                        <div id="recent-prizes-container" class="space-y-3 p-4"></div>
+                    </div>
+                    <div class="dashboard-module glass-card overflow-hidden" data-module-id="hot-numbers">
+                        <h2 class="text-lg font-bold p-4 flex items-center justify-between border-b border-white/10">
+                            <span>Meus Números da Sorte (Ano)</span>
+                            <svg class="drag-handle text-gray-500 hover:text-white" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path></svg>
+                        </h2>
+                        <div id="hot-numbers-container" class="p-4 min-h-[100px] flex flex-wrap gap-3 justify-center items-center"></div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="modal-template" class="fixed inset-0 z-50 items-start justify-center p-4 hidden modal-backdrop bg-black/60 overflow-y-auto pt-16">
+        <div class="glass-card w-full max-w-sm mb-8 p-6 modal-content scale-95 opacity-0"></div>
+    </div>
+    
+<script type="module">
+        // #############################################################
+        // ############# SCRIPT PRINCIPAL DA APLICAÇÃO #################
+        // #############################################################
+
+        // --- 1. CONFIGURAÇÃO E INICIALIZAÇÃO ---
+        
+        // IMPORTAÇÃO DOS MÓDOLOS DO FIREBASE
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, writeBatch, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // INICIALIZAÇÃO DO FIREBASE
+        const firebaseConfig = { apiKey: "AIzaSyCGWHYwXS8LcenwQYciFBKAUgvz3E4qE1c", authDomain: "lotopass.firebaseapp.com", projectId: "lotopass", storageBucket: "lotopass.appspot.com", messagingSenderId: "128432870085", appId: "1:128432870085:web:624ff2d1f481762ff5d6ac", measurementId: "G-DR4KHTPZ18" };
+        const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestore(app);
+
+        // CONSTANTES E CONFIGURAÇÕES GLOBAIS
+        const LOTTERY_GAMES = {
+            'Mega-Sena': { inputs: 6, maxNum: 60, color: 'bg-green-500', numResults: 6 }, 
+            'Lotofácil': { inputs: 15, maxNum: 25, color: 'bg-purple-500', numResults: 15 },
+            'Quina': { inputs: 5, maxNum: 80, color: 'bg-blue-500', numResults: 5 },
+            'Lotomania': { inputs: 50, maxNum: 100, color: 'bg-orange-500', numResults: 20 },
+            'Dupla Sena': { inputs: 6, maxNum: 50, color: 'bg-red-500', numResults: 6 },
+            '+Milionária': { inputs: 6, maxNum: 50, trevos: 2, maxTrevos: 6, color: 'bg-indigo-500', numResults: 6 },
+        };
+        
+        // REFERÊNCIAS AOS ELEMENTOS DA INTERFACE (UI)
+        const ui = {
+            loadingScreen: document.getElementById('loading-screen'), authScreen: document.getElementById('auth-screen'), appScreen: document.getElementById('app-screen'), 
+            totalSpentEl: document.getElementById('total-spent'), totalWonEl: document.getElementById('total-won'),
+            prizesToClaimValueEl: document.getElementById('prizes-to-claim-value'), wordCloudContainer: document.getElementById('word-cloud-container'),
+            hotNumbersContainer: document.getElementById('hot-numbers-container'), prizesToClaimContainer: document.getElementById('prizes-to-claim-container'),
+            recentPrizesContainer: document.getElementById('recent-prizes-container'),
+            pendingBetsContainer: document.getElementById('pending-bets-container'),
+            undoButton: document.getElementById('undo-button'), redoButton: document.getElementById('redo-button'),
+            tickerContent: document.getElementById('lottery-ticker-content'),
+            fabContainer: document.getElementById('fab-container'),
+            fabBlurOverlay: document.getElementById('fab-blur-overlay'),
+        };
+        
+        // VARIÁVEIS DE ESTADO GLOBAL
+        let allPrizes = [], allBets = [];
+        let historyStack = [], redoStack = [];
+        let currentYear = new Date().getFullYear();
+        let currentMonth = new Date().getMonth(); // 0-11
+        const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+        // --- 2. FUNÇÕES UTILITÁRIAS (HELPERS) ---
+        const formatCurrency = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const formatDate = (dateStr) => dateStr ? new Date(dateStr + 'T12:00:00Z').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' }) : '';
+        const todayISO = () => new Date().toISOString().split('T')[0];
+        
+        // --- 3. LÓGICA DE NAVEGAÇÃO DE DATA ---
+        const updateDateNavigator = () => {
+            const monthDisplayEl = document.getElementById('nav-month-display');
+            const yearDisplayEl = document.getElementById('nav-year-display');
+
+            if (monthDisplayEl && yearDisplayEl) {
+                monthDisplayEl.textContent = monthNames[currentMonth].substring(0, 3).toUpperCase();
+                yearDisplayEl.textContent = `/${String(currentYear).slice(-2)}`;
+            }
+        };
+
+        const changeMonth = (direction) => {
+            currentMonth += direction;
+            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            updateDateNavigator();
+            filterAndRenderDashboard();
+        };
+
+        const changeYear = (direction) => {
+            currentYear += direction;
+            updateDateNavigator();
+            filterAndRenderDashboard();
+        }
+
+        document.getElementById('prev-month-button').onclick = () => changeMonth(-1);
+        document.getElementById('next-month-button').onclick = () => changeMonth(1);
+        document.getElementById('prev-year-button').onclick = () => changeYear(-1);
+        document.getElementById('next-year-button').onclick = () => changeYear(1);
+
+        // --- 4. RENDERIZAÇÃO DO PAINEL PRINCIPAL (DASHBOARD) ---
+        
+        // FUNÇÃO PRINCIPAL DE FILTRAGEM E RENDERIZAÇÃO
+        const filterAndRenderDashboard = () => {
+            const filteredPrizes = allPrizes.filter(p => {
+                const prizeDate = new Date(p.drawDate + 'T12:00:00Z');
+                return prizeDate.getFullYear() === currentYear && prizeDate.getMonth() === currentMonth;
+            });
+            const filteredBets = allBets.filter(b => {
+                const betDate = new Date(b.betDate + 'T12:00:00Z');
+                return betDate.getFullYear() === currentYear && betDate.getMonth() === currentMonth;
+            });
+            renderDashboard(filteredPrizes, filteredBets);
+        };
+
+        // FUNÇÃO DE RENDERIZAÇÃO DOS DADOS DO DASHBOARD
+        const renderDashboard = (prizesForMonth, betsForMonth) => {
+            const costFromPrizes = prizesForMonth.reduce((s, item) => s + (item.betCost || 0), 0);
+            const costFromUnawardedBets = betsForMonth
+                .filter(b => b.status === 'completed_unawarded')
+                .reduce((s, b) => s + (b.totalCost || 0), 0);
+            
+            const totalSpentMonth = costFromPrizes + costFromUnawardedBets;
+            const totalWonMonth = prizesForMonth.reduce((s, p) => s + (p.prizeAmount || 0), 0);
+            
+            const prizesToClaimAllTime = allPrizes.filter(p => (p.prizeAmount || 0) > 0 && !p.claimed);
+            const totalToClaimValue = prizesToClaimAllTime.reduce((sum, p) => sum + (p.prizeAmount || 0), 0);
+            
+            ui.totalSpentEl.textContent = formatCurrency(totalSpentMonth);
+            ui.totalWonEl.textContent = formatCurrency(totalWonMonth);
+            ui.prizesToClaimValueEl.textContent = formatCurrency(totalToClaimValue);
+
+            renderPendingBets(allBets.filter(b => b.status === 'pending'));
+            renderPrizesToClaim(prizesToClaimAllTime);
+            renderRecentPrizes(prizesForMonth);
+            
+            const prizesForYear = allPrizes.filter(p => new Date(p.drawDate + 'T12:00:00Z').getFullYear() === currentYear);
+            const allWinningNumbersYear = prizesForYear.flatMap(p => p.winningNumbers || []);
+            const allWinningTrevosYear = prizesForYear.flatMap(p => p.winningTrevos || []);
+            renderHotNumbers(allWinningNumbersYear, allWinningTrevosYear);
+
+            renderWordCloud(prizesForMonth);
+        };
+
+        // FUNÇÕES DE RENDERIZAÇÃO DOS MÓDULOS INDIVIDUAIS
+        const renderPendingBets = (pendingBets) => {
+            ui.pendingBetsContainer.innerHTML = pendingBets.length ? pendingBets.map(bet => {
+                const gamesList = bet.gameNames.map(gn => `<span class="px-2 py-1 text-xs font-semibold rounded-full ${LOTTERY_GAMES[gn]?.color || 'bg-gray-500'}">${gn}</span>`).join(' ');
+                return `
+                    <div class="bg-black/20 p-4 space-y-3 rounded-lg">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-bold text-lg">${formatCurrency(bet.totalCost)}</p>
+                                <p class="text-sm text-gray-300">Aposta de ${formatDate(bet.betDate)}</p>
+                            </div>
+                            <button data-id="${bet.id}" class="resolve-bet-button bg-cyan-500/80 text-white font-semibold py-2 px-4 rounded-lg text-sm hover:bg-cyan-500">Informar Resultado</button>
+                        </div>
+                        <div class="flex flex-wrap gap-2 items-center border-t border-white/20 pt-3">
+                            ${gamesList}
+                        </div>
+                    </div>`;
+            }).join('') : `<p class="text-gray-300 text-sm text-center">Nenhuma aposta pendente.</p>`;
+        };
+        
+        const renderPrizesToClaim = (prizes) => {
+            ui.prizesToClaimContainer.innerHTML = prizes.length ? prizes.map(prize => {
+                    const expiryInfo = getExpiryInfo(prize.drawDate);
+                    return `<div class="bg-black/20 p-4 flex items-center justify-between rounded-lg">
+                        <div><p class="font-bold text-lg">${formatCurrency(prize.prizeAmount)}</p><p class="text-sm ${expiryInfo.color}">${expiryInfo.text}</p></div>
+                        <button data-id="${prize.id}" class="claim-button bg-cyan-500/80 text-white font-semibold py-2 px-4 rounded-lg text-sm hover:bg-cyan-500">Resgatar</button>
+                    </div>`
+                }).join('') : `<p class="text-gray-300 text-sm text-center">Nenhum prêmio a resgatar.</p>`;
+        };
+
+        const renderRecentPrizes = (prizes) => {
+             ui.recentPrizesContainer.innerHTML = prizes.length ? prizes.slice(0, 10).map(prize => `
+                <div class="bg-black/20 p-4 space-y-3 rounded-lg">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full ${LOTTERY_GAMES[prize.gameName]?.color || 'bg-gray-500'}">${prize.gameName}</span>
+                            <p class="font-bold text-lg mt-1">Concurso ${prize.contestNumber}</p>
+                        </div>
+                        <button data-id="${prize.id}" class="edit-prize-button text-gray-300 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1l1-4l9.5-9.5z"/></svg></button>
+                    </div>
+                    <div class="flex flex-wrap gap-2 items-center">
+                        ${(prize.playedNumbers || []).map(n => `<div class="input-ball h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold bg-white/20 ${ (prize.winningNumbers || []).includes(n) ? 'winner' : ''}">${String(n).padStart(2,'0')}</div>`).join('')}
+                        ${(prize.playedTrevos || []).length > 0 ? `<span class="text-xs mx-1">+</span>` : ''}
+                        ${(prize.playedTrevos || []).map(t => `<div class="input-ball h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold bg-cyan-800/80 ${ (prize.winningTrevos || []).includes(t) ? 'winner' : ''}">${String(t).padStart(2,'0')}</div>`).join('')}
+                    </div>
+                    <div class="text-xs text-gray-300 border-t border-white/20 pt-2 flex justify-between">
+                        <span>Custo Aposta: ${formatCurrency(prize.betCost)}</span>
+                        <span>Prêmio: ${formatCurrency(prize.prizeAmount)}</span>
+                    </div>
+                </div>`).join('') : `<p class="text-gray-300 text-sm text-center">Nenhum prêmio registrado neste mês.</p>`;
+        };
+        
+        const renderHotNumbers = (numbers, trevos) => {
+            if (numbers.length === 0 && trevos.length === 0) {
+                 ui.hotNumbersContainer.innerHTML = `<div class="text-center"><p class="text-gray-300">Nenhum número da sorte neste ano.</p><p class="text-xs text-gray-400">Marque os acertos em seus prêmios.</p></div>`; return;
+            }
+            const counts = numbers.reduce((a, n) => ({ ...a, [n]: (a[n] || 0) + 1 }), {});
+            const trevoCounts = trevos.reduce((a, t) => ({ ...a, [t]: (a[t] || 0) + 1 }), {});
+            const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+            const sortedTrevos = Object.entries(trevoCounts).sort((a, b) => b[1] - a[1]);
+            ui.hotNumbersContainer.innerHTML = sorted.map(([num, count]) => `<div class="relative bg-white/20 rounded-full h-14 w-14 flex items-center justify-center font-bold text-xl">${String(num).padStart(2, '0')}<span class="absolute -top-1 -right-1 bg-yellow-400 text-gray-900 text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">${count}</span></div>`).join('');
+            ui.hotNumbersContainer.innerHTML += sortedTrevos.map(([num, count]) => `<div class="relative bg-cyan-800/80 rounded-full h-14 w-14 flex items-center justify-center font-bold text-xl">${String(num).padStart(2, '0')}<span class="absolute -top-1 -right-1 bg-yellow-400 text-gray-900 text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">${count}</span></div>`).join('');
+        };
+
+        const renderWordCloud = (prizes) => {
+            const awardedPrizes = prizes.filter(p => (p.prizeAmount || 0) > 0);
+            if (awardedPrizes.length === 0) {
+                ui.wordCloudContainer.innerHTML = `<p class="text-gray-400 text-sm text-center">Nenhum jogo premiado neste mês.</p>`; return;
+            }
+            const gameCounts = awardedPrizes.reduce((acc, prize) => {
+                acc[prize.gameName] = (acc[prize.gameName] || 0) + 1; return acc;
+            }, {});
+            const sortedGames = Object.entries(gameCounts).sort((a, b) => b[1] - a[1]);
+            const maxCount = sortedGames[0][1];
+            
+            ui.wordCloudContainer.innerHTML = sortedGames.map(([gameName, count]) => {
+                const fontSize = 1 + (count / maxCount) * 1.25;
+                const gameConfig = LOTTERY_GAMES[gameName];
+                const colorVarName = gameConfig ? `--${gameName.toLowerCase().replace(/\s/g, '-').replace('+', 'milionaria')}-color` : '--fallback-color';
+                return `<button data-gamename="${gameName}" class="details-button word-cloud-item" style="--font-size: ${fontSize}rem; --text-color: var(${colorVarName});">${gameName}</button>`
+            }).join('');
+        };
+
+        // --- 5. LÓGICA E ABERTURA DAS JANELAS (MODAIS) ---
+
+        // MODAL DE HISTÓRICO DE PRÊMIOS RESGATADOS
+        function openPrizeHistoryModal() {
+            const claimedPrizes = allPrizes.filter(p => p.claimed).sort((a, b) => new Date(b.claimedDate) - new Date(a.claimedDate));
+            const historyContent = `
+                <h3 class="text-xl font-semibold mb-4">Histórico de Prêmios</h3>
+                <div class="space-y-3 max-h-[60vh] overflow-y-auto">
+                ${claimedPrizes.length ? claimedPrizes.map(prize => `
+                    <div class="bg-white/5 p-3 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full ${LOTTERY_GAMES[prize.gameName]?.color || 'bg-gray-500'}">${prize.gameName}</span>
+                            <span class="font-bold text-green-400">${formatCurrency(prize.prizeAmount)}</span>
+                        </div>
+                        <p class="text-xs text-gray-300 mt-2">Resgatado em ${new Date(prize.claimedDate + 'T12:00:00Z').toLocaleDateString('pt-BR')} via ${prize.claimedMethod || 'Não informado'}</p>
+                    </div>`).join('') : '<p class="text-gray-400 text-center text-sm py-4">Nenhum prêmio foi resgatado ainda.</p>'}
+                </div>`;
+            createModal(historyContent);
+        }
+        
+        // MODAL DE HISTÓRICO DE TODAS AS APOSTAS
+        function openBetHistoryModal() {
+            const sortedBets = [...allBets].sort((a, b) => new Date(b.betDate) - new Date(a.betDate));
+            const historyContent = `
+                <h3 class="text-xl font-semibold mb-4">Histórico de Apostas</h3>
+                <div class="space-y-3 max-h-[60vh] overflow-y-auto">
+                ${sortedBets.length ? sortedBets.map(bet => {
+                    const gamesList = bet.gameNames.map(gn => `<span class="px-2 py-1 text-xs font-semibold rounded-full ${LOTTERY_GAMES[gn]?.color || 'bg-gray-500'}">${gn}</span>`).join(' ');
+                    return `
+                    <div class="bg-white/5 p-3 rounded-lg">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-bold text-lg">${formatCurrency(bet.totalCost)}</p>
+                                <p class="text-xs text-gray-300 mt-1">Aposta de ${formatDate(bet.betDate)}</p>
+                            </div>
+                            <div class="flex gap-2 items-center">
+                                <button data-id="${bet.id}" class="edit-bet-button p-2 text-gray-300 hover:text-white rounded-full hover:bg-white/10 transition-all" title="Editar Aposta">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1l1-4l9.5-9.5z"/></svg>
+                                </button>
+                                <button data-id="${bet.id}" class="delete-bet-button p-2 text-gray-300 hover:text-red-400 rounded-full hover:bg-white/10 transition-all" title="Excluir Aposta">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-2 items-center border-t border-white/10 pt-2 mt-2">
+                            ${gamesList}
+                        </div>
+                    </div>`
+                }).join('') : '<p class="text-gray-400 text-center text-sm py-4">Nenhuma aposta registrada.</p>'}
+                </div>`;
+            createModal(historyContent);
+        }
+
+        // COMPONENTE DE INPUT DE MOEDA
+        const createCurrencyInput = (name, placeholder, value, readonly = false) => `
+            <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">R$</span>
+                <input type="text" name="${name}" placeholder="${placeholder}" value="${value}" ${readonly ? 'readonly' : ''}
+                       class="currency-input bg-white/10 placeholder-gray-400 text-white w-full rounded-lg p-3 pl-10 border-0 ${readonly ? 'cursor-not-allowed' : ''}" required>
+            </div>`;
+        
+        // MODAL DE REGISTRO/EDIÇÃO DE APOSTAS
+        function openBetModal(bet = null) {
+            const isEditing = bet !== null;
+            const gamesCheckboxes = Object.keys(LOTTERY_GAMES).map(name => `
+                <label class="flex items-center space-x-3 bg-white/5 p-3 rounded-lg cursor-pointer hover:bg-white/10">
+                    <input type="checkbox" name="gameNames" value="${name}" ${isEditing && bet.gameNames.includes(name) ? 'checked' : ''} class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-cyan-600 focus:ring-cyan-500">
+                    <span class="font-semibold">${name}</span>
+                </label>
+            `).join('');
+
+            const modalContent = `
+                <h3 class="text-xl font-semibold mb-4">${isEditing ? 'Editar Aposta' : 'Registrar Nova Aposta'}</h3>
+                <form id="bet-form" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        ${createCurrencyInput('totalCost', 'Custo Total', isEditing ? (bet.totalCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '')}
+                        <input type="date" name="betDate" value="${isEditing ? bet.betDate : todayISO()}" class="bg-white/10 text-white w-full rounded-lg p-3 border-0" required>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-300 mb-2">Selecione as modalidades da aposta:</p>
+                        <div class="space-y-2 max-h-48 overflow-y-auto">${gamesCheckboxes}</div>
+
+
+                    </div>
+                    <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-600 rounded-lg p-3 font-semibold transition-all !mt-6">${isEditing ? 'Salvar Alterações' : 'Salvar Aposta'}</button>
+                </form>`;
+            createModal(modalContent);
+
+            document.getElementById('bet-form').onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const gameNames = formData.getAll('gameNames');
+                if (gameNames.length === 0) {
+                    alert('Selecione pelo menos uma modalidade.');
+                    return;
+                }
+                const betData = {
+                    totalCost: parseCurrency(formData.get('totalCost')),
+                    betDate: formData.get('betDate'),
+                    gameNames: gameNames,
+                    status: isEditing ? bet.status : 'pending',
+                };
+
+                if (isEditing) {
+                    const oldData = allBets.find(b => b.id === bet.id);
+                    addActionToHistory({ type: 'update', collection: 'bets', id: bet.id, oldData, newData: { ...oldData, ...betData } });
+                    await updateDoc(doc(db, 'users', auth.currentUser.uid, 'bets', bet.id), betData);
+                } else {
+                    const docRef = await addDoc(collection(db, 'users', auth.currentUser.uid, 'bets'), { ...betData, createdAt: serverTimestamp() });
+                    addActionToHistory({ type: 'add', collection: 'bets', id: docRef.id, data: betData });
+                }
+                document.querySelector('#active-modal .modal-close-button')?.click();
+            };
+        }
+        
+        // MODAL PARA RESOLVER UMA APOSTA PENDENTE
+        function openResolveBetModal(bet) {
+            const modalContent = `
+                <h3 class="text-xl font-semibold mb-6 text-center">Resultado da Aposta</h3>
+                <p class="text-center text-gray-300 mb-6">A aposta de ${formatCurrency(bet.totalCost)} feita em ${formatDate(bet.betDate)} foi premiada?</p>
+                <div class="flex gap-4">
+                    <button id="resolve-unawarded-btn" class="w-full bg-red-500/80 hover:bg-red-500 rounded-lg p-3 font-semibold transition-all">Não, não foi premiada</button>
+                    <button id="resolve-awarded-btn" class="w-full bg-green-500/80 hover:bg-green-500 rounded-lg p-3 font-semibold transition-all">Sim, foi premiada!</button>
+                </div>`;
+            createModal(modalContent);
+
+            document.getElementById('resolve-unawarded-btn').onclick = async () => {
+                const oldData = allBets.find(b => b.id === bet.id);
+                const newData = { ...oldData, status: 'completed_unawarded' };
+                addActionToHistory({ type: 'update', collection: 'bets', id: bet.id, oldData, newData });
+                await updateDoc(doc(db, 'users', auth.currentUser.uid, 'bets', bet.id), { status: 'completed_unawarded' });
+                document.querySelector('#active-modal .modal-close-button')?.click();
+            };
+
+            document.getElementById('resolve-awarded-btn').onclick = () => {
+                const gamesCheckboxes = bet.gameNames.map((name) => `
+                    <label class="flex items-center space-x-3 bg-white/5 p-3 rounded-lg cursor-pointer hover:bg-white/10">
+                        <input type="checkbox" name="winningGame" value="${name}" class="h-5 w-5 bg-gray-700 border-gray-600 text-cyan-600 focus:ring-cyan-500">
+                        <span class="font-semibold">${name}</span>
+                    </label>
+                `).join('');
+                
+                const newContent = `
+                    <h3 class="text-xl font-semibold mb-4">Qual modalidade foi premiada?</h3>
+                    <form id="select-winner-form" class="space-y-3">
+                        <div class="space-y-2 max-h-48 overflow-y-auto">${gamesCheckboxes}</div>
+                        <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-600 rounded-lg p-3 font-semibold transition-all !mt-6">Continuar</button>
+                    </form>`;
+                
+                const modalContainer = document.querySelector('#active-modal .modal-content');
+                modalContainer.innerHTML = newContent;
+                modalContainer.insertAdjacentHTML('afterbegin', `<button class="modal-close-button absolute top-4 right-4 text-gray-400 hover:text-white text-3xl leading-none">&times;</button>`);
+                document.querySelector('#active-modal .modal-close-button').onclick = () => document.querySelector('#active-modal').remove();
+
+                document.getElementById('select-winner-form').onsubmit = (e) => {
+                    e.preventDefault();
+                    const winningGames = new FormData(e.target).getAll('winningGame');
+                    if(winningGames.length === 0) {
+                        alert('Selecione ao menos uma modalidade premiada.');
+                        return;
+                    }
+                    document.querySelector('#active-modal .modal-close-button')?.click();
+                    setTimeout(() => startPrizeRegistrationSequence(winningGames, bet), 300);
+                };
+            };
+        }
+
+        // FUNÇÃO PARA INICIAR A SEQUÊNCIA DE REGISTRO DE PRÊMIOS
+        function startPrizeRegistrationSequence(winningGames, bet) {
+            let currentIndex = 0;
+
+            const processNext = () => {
+                if (currentIndex >= winningGames.length) return; // Sequence finished
+
+                const gameName = winningGames[currentIndex];
+                const context = {
+                    betId: bet.id,
+                    gameName: gameName,
+                    betCost: bet.totalCost,
+                    title: `Registrar Prêmio (${currentIndex + 1} de ${winningGames.length})`
+                };
+
+                const onSuccess = () => {
+                    currentIndex++;
+                    processNext(); // Process the next prize in the sequence
+                };
+
+                openPrizeModal(null, context, onSuccess);
+            };
+
+            processNext(); // Start the sequence
+        }
+
+        // MODAL DE REGISTRO/EDIÇÃO DE PRÊMIOS
+        function openPrizeModal(prize = null, context = {}, onSuccess = null) {
+            const isEditing = prize !== null;
+            const gameName = prize?.gameName || context.gameName || '';
+            const betCost = prize?.betCost || context.betCost || 0;
+            const isFromBet = !!context.betId;
+            const title = context.title || (isEditing ? 'Editar Prêmio' : 'Registrar Prêmio');
+            
+            const modalContent = `<h3 class="text-xl font-semibold mb-4">${title}</h3>
+                <form id="prize-form" class="space-y-4">
+                    <select name="gameName" class="custom-select w-full rounded-lg p-3" required ${isFromBet ? 'disabled' : ''}>
+                        <option value="">Selecione a Modalidade</option>
+                        ${Object.keys(LOTTERY_GAMES).map(name => `<option value="${name}" ${gameName === name ? 'selected' : ''}>${name}</option>`).join('')}
+                    </select>
+                    <div class="grid grid-cols-2 gap-4">
+                        <input type="number" name="contestNumber" placeholder="Concurso" value="${prize?.contestNumber || ''}" class="bg-white/10 placeholder-gray-400 text-white w-full rounded-lg p-3 border-0" required>
+                        ${createCurrencyInput('betCost', 'Custo Aposta', betCost > 0 ? betCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '', isFromBet)}
+                    </div>
+                     <input type="date" name="drawDate" value="${prize?.drawDate || todayISO()}" class="bg-white/10 text-white w-full rounded-lg p-3 border-0" required>
+                    <div id="number-inputs-container"></div>
+                    <div class="pt-2 border-t border-white/20">
+                         <p class="text-xs text-gray-300 mb-2">Clique nas bolinhas que foram sorteadas para marcá-las como acertos.</p>
+                         ${createCurrencyInput('prizeAmount', 'Valor do Prêmio', (prize?.prizeAmount || 0) > 0 ? (prize.prizeAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '')}
+                    </div>
+                    <div class="flex gap-4 pt-4">
+                         ${isEditing ? `<button type="button" id="delete-prize-btn" class="w-1/3 bg-red-500/80 hover:bg-red-500 rounded-lg p-3 font-semibold transition-all">Excluir</button>` : ''}
+                        <button type="submit" class="flex-grow bg-cyan-500 hover:bg-cyan-600 rounded-lg p-3 font-semibold transition-all">${isEditing ? 'Salvar Alterações' : 'Adicionar Prêmio'}</button>
+                    </div>
+                </form>`;
+            createModal(modalContent);
+
+            const form = document.getElementById('prize-form'), gameSelect = form.querySelector('[name="gameName"]'), numberInputsContainer = form.querySelector('#number-inputs-container');
+            const renderInputBalls = () => {
+                const gameConfig = LOTTERY_GAMES[gameSelect.value]; if (!gameConfig) { numberInputsContainer.innerHTML = ''; return; }
+                let html = '<p class="text-xs text-gray-300 mb-2">Números jogados:</p><div class="flex flex-wrap gap-2">';
+                for (let i = 0; i < gameConfig.inputs; i++) {
+                    const val = prize?.playedNumbers?.[i] || ''; const isWinner = prize?.winningNumbers?.includes(val) && val !== '';
+                    html += `<div class="input-ball h-10 w-10 rounded-full flex items-center justify-center bg-white/20 ${isWinner ? 'winner' : ''}"><input type="number" name="playedNumber" value="${val}" min="1" max="${gameConfig.maxNum}" class="number-input"></div>`;
+                }
+                html += '</div>';
+                if (gameConfig.trevos) {
+                    html += '<p class="text-xs text-gray-300 mt-3 mb-2">Trevos:</p><div class="flex flex-wrap gap-2">';
+                    for (let i = 0; i < gameConfig.trevos; i++) {
+                        const val = prize?.playedTrevos?.[i] || ''; const isWinner = prize?.winningTrevos?.includes(val) && val !== '';
+                        html += `<div class="input-ball h-10 w-10 rounded-full flex items-center justify-center bg-cyan-800/80 ${isWinner ? 'winner' : ''}"><input type="number" name="playedTrevos" value="${val}" min="1" max="${gameConfig.maxTrevos}" class="trevo-input"></div>`;
+                    }
+                    html += '</div>';
+                }
+                numberInputsContainer.innerHTML = html;
+            };
+            gameSelect.onchange = renderInputBalls;
+            numberInputsContainer.onclick = (e) => { const ball = e.target.closest('.input-ball'), input = ball?.querySelector('input'); if (ball && input?.value) ball.classList.toggle('winner'); };
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const getValues = name => Array.from(form.querySelectorAll(`input[name="${name}"]`)).map(i => parseInt(i.value)).filter(v => !isNaN(v));
+                const getWinners = name => Array.from(form.querySelectorAll(`input[name="${name}"]`)).filter(i => i.parentElement.classList.contains('winner')).map(i => parseInt(i.value)).filter(v => !isNaN(v));
+                const prizeData = {
+                    gameName: gameSelect.value, contestNumber: formData.get('contestNumber'), drawDate: formData.get('drawDate'), betCost: parseCurrency(formData.get('betCost')), prizeAmount: parseCurrency(formData.get('prizeAmount')),
+                    playedNumbers: getValues('playedNumber').sort((a,b)=>a-b), winningNumbers: getWinners('playedNumber').sort((a,b)=>a-b),
+                    playedTrevos: getValues('playedTrevos').sort((a,b)=>a-b), winningTrevos: getWinners('playedTrevos').sort((a,b)=>a-b),
+                    claimed: isEditing ? prize.claimed : false, claimedDate: isEditing ? prize.claimedDate : null, claimedMethod: isEditing ? prize.claimedMethod : null
+                };
+                if (isEditing) {
+                    const oldData = allPrizes.find(p => p.id === prize.id);
+                    addActionToHistory({ type: 'update', collection: 'prizes', id: prize.id, oldData, newData: prizeData });
+                    await updateDoc(doc(db, 'users', auth.currentUser.uid, 'prizes', prize.id), prizeData);
+                } else {
+                    if (context.betId) {
+                        prizeData.betId = context.betId;
+                        const batch = writeBatch(db);
+                        const newPrizeRef = doc(collection(db, 'users', auth.currentUser.uid, 'prizes'));
+                        batch.set(newPrizeRef, { ...prizeData, createdAt: serverTimestamp() });
+                        const betRef = doc(db, 'users', auth.currentUser.uid, 'bets', context.betId);
+                        batch.update(betRef, { status: 'completed_awarded' });
+                        await batch.commit();
+                        addActionToHistory({ type: 'add', collection: 'prizes', id: newPrizeRef.id, data: prizeData });
+                    } else {
+                        const docRef = await addDoc(collection(db, 'users', auth.currentUser.uid, 'prizes'), { ...prizeData, createdAt: serverTimestamp() });
+                        addActionToHistory({ type: 'add', collection: 'prizes', id: docRef.id, data: prizeData });
+                    }
+                }
+                document.querySelector('#active-modal .modal-close-button')?.click();
+                if (onSuccess) {
+                    setTimeout(onSuccess, 300); // Call success callback after animation
+                }
+            };
+            renderInputBalls();
+            if(isEditing) document.getElementById('delete-prize-btn').onclick = async () => {
+                if (confirm('Tem certeza?')) {
+                    addActionToHistory({ type: 'delete', collection: 'prizes', id: prize.id, data: prize });
+                    await deleteDoc(doc(db, 'users', auth.currentUser.uid, 'prizes', prize.id));
+                    document.querySelector('#active-modal .modal-close-button')?.click();
+                }
+            };
+        }
+
+        // --- 6. LÓGICA DE DADOS E AUTENTICAÇÃO (FIREBASE) ---
+
+        // FUNÇÕES PARA SALVAR E CARREGAR A ORDEM DOS MÓDULOS
+        const saveMainModuleOrder = () => {
+            const container = document.getElementById('main-modules-container');
+            const order = [...container.querySelectorAll('.dashboard-module')].map(el => el.dataset.moduleId);
+            localStorage.setItem(`mainOrder_${auth.currentUser.uid}`, JSON.stringify(order));
+        };
+
+        const loadMainModuleOrder = () => {
+            const container = document.getElementById('main-modules-container');
+            const savedOrder = JSON.parse(localStorage.getItem(`mainOrder_${auth.currentUser.uid}`));
+            if (savedOrder && container) {
+                savedOrder.forEach(moduleId => {
+                    const module = container.querySelector(`[data-module-id="${moduleId}"]`);
+                    if (module) container.appendChild(module);
+                });
+            }
+        };
+
+        // OBSERVADOR DE AUTENTICAÇÃO E BUSCA DE DADOS
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                const prizesQuery = query(collection(db, 'users', user.uid, 'prizes'), orderBy('drawDate', 'desc'));
+                onSnapshot(prizesQuery, snapshot => { 
+                    allPrizes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+                    filterAndRenderDashboard(); 
+                });
+                
+                const betsQuery = query(collection(db, 'users', user.uid, 'bets'), orderBy('betDate', 'desc'));
+                onSnapshot(betsQuery, snapshot => {
+                    allBets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    filterAndRenderDashboard();
+                });
+
+                ui.authScreen.style.display = 'none'; ui.appScreen.style.display = 'flex'; ui.loadingScreen.style.display = 'none';
+                
+                updateDateNavigator();
+                loadMainModuleOrder();
+                updateTicker();
+                
+                const mainModulesContainer = document.getElementById('main-modules-container');
+                if (mainModulesContainer) {
+                    new Sortable(mainModulesContainer, {
+                        animation: 150,
+                        handle: '.drag-handle',
+                        ghostClass: 'sortable-ghost',
+                        onEnd: () => {
+                            saveMainModuleOrder();
+                        }
+                    });
+                }
+            } else {
+                allPrizes = []; allBets = []; historyStack = []; redoStack = []; updateUndoRedoButtons();
+                renderDashboard([], []);
+                ui.authScreen.style.display = 'flex'; ui.appScreen.style.display = 'none'; ui.loadingScreen.style.display = 'none';
+            }
+        });
+        
+        // --- 7. EVENTOS PRINCIPAIS DA PÁGINA ---
+
+        // EVENTOS DE BOTÕES PRINCIPAIS
+        document.getElementById('add-bet-button').onclick = () => openBetModal();
+        document.getElementById('prize-history-button').onclick = openPrizeHistoryModal;
+        document.getElementById('bet-history-button').onclick = openBetHistoryModal;
+        document.getElementById('generate-bet-button').onclick = () => openGeneratorChoiceModal();
+        document.getElementById('analytics-button').onclick = () => openAnalyticsModal();
+        
+        // EVENTOS DO BOTÃO FLUTUANTE (FAB)
+        document.getElementById('fab-main-button').onclick = () => {
+            ui.fabContainer.classList.toggle('open');
+            ui.fabBlurOverlay.classList.toggle('active', ui.fabContainer.classList.contains('open'));
+        };
+        ui.fabBlurOverlay.onclick = () => {
+             ui.fabContainer.classList.remove('open');
+             ui.fabBlurOverlay.classList.remove('active');
+        };
+
+        // LISTENER GLOBAL DE CLIQUES (DELEGAÇÃO DE EVENTOS)
+        document.body.addEventListener('click', async (e) => {
+            const editPrizeBtn = e.target.closest('.edit-prize-button');
+            if (editPrizeBtn) {
+                const prizeData = allPrizes.find(p => p.id === editPrizeBtn.dataset.id);
+                if (prizeData) openPrizeModal(prizeData);
+            }
+
+            const resolveBetBtn = e.target.closest('.resolve-bet-button');
+            if (resolveBetBtn) {
+                const betData = allBets.find(b => b.id === resolveBetBtn.dataset.id);
+                if (betData) openResolveBetModal(betData);
+            }
+            
+            const claimBtn = e.target.closest('.claim-button');
+            if(claimBtn) {
+                const prizeId = claimBtn.dataset.id;
+                const content = `
+                    <h4 class="text-lg font-semibold text-center mb-4">Confirmar Resgate</h4>
+                    <form id="claim-form" class="space-y-4">
+                        <div><label class="text-sm text-gray-300">Data do Resgate</label>
+                            <input type="date" name="claimedDate" value="${todayISO()}" class="bg-white/10 text-white w-full rounded-lg p-3 mt-1 border-0" required></div>
+                        <div><label class="text-sm text-gray-300">Local do Resgate</label>
+                            <select name="claimedMethod" class="custom-select w-full rounded-lg p-3 mt-1" required>
+                                <option>Lotérica</option><option>Agência Caixa</option><option>Internet Banking</option><option>Mercado Pago</option>
+                            </select></div>
+                        <button type="submit" class="w-full mt-4 bg-cyan-500 hover:bg-cyan-600 rounded-lg p-3 font-semibold transition-all">Confirmar</button>
+                    </form>`;
+                createModal(content);
+                document.getElementById('claim-form').onsubmit = async (event) => {
+                    event.preventDefault();
+                    const formData = new FormData(event.target), claimedDate = formData.get('claimedDate'), claimedMethod = formData.get('claimedMethod');
+                    const prizeRef = doc(db, 'users', auth.currentUser.uid, 'prizes', prizeId);
+                    const oldData = (await getDoc(prizeRef)).data();
+                    const newData = { ...oldData, claimed: true, claimedDate, claimedMethod };
+                    addActionToHistory({ type: 'update', collection: 'prizes', id: prizeId, oldData, newData });
+                    await updateDoc(prizeRef, { claimed: true, claimedDate, claimedMethod });
+                    document.querySelector('#active-modal .modal-close-button')?.click();
+                };
+            }
+
+            const detailsBtn = e.target.closest('.details-button');
+            if (detailsBtn && detailsBtn.dataset.gamename) {
+                openMostAwardedDetailsModal(detailsBtn.dataset.gamename);
+            }
+
+            const editBetBtn = e.target.closest('.edit-bet-button');
+            if (editBetBtn) {
+                const betData = allBets.find(b => b.id === editBetBtn.dataset.id);
+                if (betData) {
+                    document.querySelector('#active-modal .modal-close-button')?.click();
+                    setTimeout(() => openBetModal(betData), 300);
+                }
+            }
+
+            const deleteBetBtn = e.target.closest('.delete-bet-button');
+            if (deleteBetBtn) {
+                const betId = deleteBetBtn.dataset.id;
+                const betData = allBets.find(b => b.id === betId);
+                if (confirm('Tem certeza que deseja excluir esta aposta?')) {
+                    addActionToHistory({ type: 'delete', collection: 'bets', id: betId, data: betData });
+                    await deleteDoc(doc(db, 'users', auth.currentUser.uid, 'bets', betId));
+                    // Check if the modal is still open before trying to close it
+                    const activeModal = document.querySelector('#active-modal');
+                    if (activeModal && activeModal.contains(deleteBetBtn)) {
+                        activeModal.querySelector('.modal-close-button')?.click();
+                    }
+                }
+            }
+        });
+
+        // MODAL DE DETALHES DAS MODALIDADES PREMIADAS
+        function openMostAwardedDetailsModal(gameName) {
+            const gamePrizes = allPrizes.filter(p => p.gameName === gameName && p.prizeAmount > 0).sort((a,b) => new Date(b.drawDate) - new Date(a.drawDate));
+            const historyContent = `
+                <h3 class="text-xl font-semibold mb-4">Prêmios de ${gameName}</h3>
+                <div class="space-y-3 max-h-[60vh] overflow-y-auto">
+                ${gamePrizes.length ? gamePrizes.map(prize => `
+                    <div class="bg-white/5 p-3 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm">Concurso ${prize.contestNumber}</span>
+                            <span class="font-bold text-green-400">${formatCurrency(prize.prizeAmount)}</span>
+                        </div>
+                        <p class="text-xs text-gray-300 mt-2">Data: ${formatDate(prize.drawDate)}</p>
+                    </div>`).join('') : '<p class="text-gray-400 text-center text-sm py-4">Nenhum prêmio encontrado.</p>'}
+                </div>`;
+            createModal(historyContent);
+        }
+
+        // MODAL DE ANÁLISE ANUAL
+        function openAnalyticsModal() {
+            const prizesThisYear = allPrizes.filter(p => new Date(p.drawDate + 'T12:00:00Z').getFullYear() === currentYear);
+            
+            if (prizesThisYear.length === 0) {
+                 createModal(`<h3 class="text-xl font-semibold mb-4 text-center">Análise de ${currentYear}</h3><p class="text-center text-gray-400">Nenhum dado encontrado para este ano.</p>`);
+                 return;
+            }
+
+            const monthlyData = Array.from({length: 12}, () => ({spent: 0, won: 0}));
+            prizesThisYear.forEach(p => {
+                const month = new Date(p.drawDate + 'T12:00:00Z').getMonth();
+                monthlyData[month].spent += p.betCost || 0;
+                monthlyData[month].won += p.prizeAmount || 0;
+            });
+
+            const totalSpentYear = monthlyData.reduce((acc, data) => acc + data.spent, 0);
+            const totalWonYear = monthlyData.reduce((acc, data) => acc + data.won, 0);
+
+            const monthWithMostSpent = monthlyData.indexOf(monthlyData.reduce((prev, current) => (prev.spent > current.spent) ? prev : current));
+            const monthWithMostWon = monthlyData.indexOf(monthlyData.reduce((prev, current) => (prev.won > current.won) ? prev : current));
+            
+            const spentPercent = totalSpentYear + totalWonYear > 0 ? (totalSpentYear / (totalSpentYear + totalWonYear)) * 100 : 0;
+            const wonPercent = 100 - spentPercent;
+
+            const modalContent = `
+                <h3 class="text-xl font-semibold mb-6 text-center">Análise de ${currentYear}</h3>
+                <div class="space-y-4">
+                    <div class="bg-white/5 p-3 rounded-lg text-center">
+                        <p class="text-sm text-gray-300">Mês com Mais Gastos</p>
+                        <p class="font-bold text-lg text-red-400">${monthNames[monthWithMostSpent]} (${formatCurrency(monthlyData[monthWithMostSpent].spent)})</p>
+                    </div>
+                     <div class="bg-white/5 p-3 rounded-lg text-center">
+                        <p class="text-sm text-gray-300">Mês com Mais Ganhos</p>
+                        <p class="font-bold text-lg text-green-400">${monthNames[monthWithMostWon]} (${formatCurrency(monthlyData[monthWithMostWon].won)})</p>
+                    </div>
+                </div>
+                <div class="mt-8">
+                     <h4 class="text-lg font-semibold text-center mb-4">Visão Geral do Ano</h4>
+                     <div class="flex justify-center items-center gap-6">
+                        <div id="analytics-pie-chart" class="pie-chart">
+                            <div class="w-24 h-24 bg-gray-800 rounded-full"></div>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-red-400"></div><div>Gastos: ${formatCurrency(totalSpentYear)}</div></div>
+                            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-green-400"></div><div>Ganhos: ${formatCurrency(totalWonYear)}</div></div>
+                            <div class="flex items-center gap-2 pt-2 border-t border-white/10 mt-2"><div class="w-3 h-3 rounded-full bg-cyan-400"></div><div>Saldo: <span class="${totalWonYear-totalSpentYear >= 0 ? 'text-green-400' : 'text-red-400'}">${formatCurrency(totalWonYear - totalSpentYear)}</span></div></div>
+                        </div>
+                     </div>
+                </div>
+            `;
+            createModal(modalContent);
+            const pieChartEl = document.getElementById('analytics-pie-chart');
+            if (pieChartEl) {
+                pieChartEl.style.setProperty('--spent-percent', `${spentPercent.toFixed(2)}%`);
+            }
+        }
+        
+        // --- 8. LÓGICAS ESPECÍFICAS DE FUNCIONALIDADES ---
+        
+        // LÓGICA DO LETREIRO DE SORTEIOS (TICKER) - ATUALIZADO COM API OFICIAL, MÚLTIPLOS PROXIES E FALLBACK
+        const TICKER_CONFIG = {
+            'megasena':   { name: 'Mega-Sena', color: 'var(--mega-sena-color)', colorClass: 'text-mega-sena', schedule: 'Ter, Qui e Sáb' },
+            'lotofacil':  { name: 'Lotofácil', color: 'var(--lotofacil-color)', colorClass: 'text-lotofacil', schedule: 'Seg a Sáb' },
+            'quina':      { name: 'Quina', color: 'var(--quina-color)', colorClass: 'text-quina', schedule: 'Seg a Sáb' },
+            'lotomania':  { name: 'Lotomania', color: 'var(--lotomania-color)', colorClass: 'text-lotomania', schedule: 'Seg, Qua e Sex' },
+            'duplasena':  { name: 'Dupla Sena', color: 'var(--dupla-sena-color)', colorClass: 'text-dupla-sena', schedule: 'Ter, Qui e Sáb' },
+            'maismilionaria': { name: '+Milionária', color: 'var(--milionaria-color)', colorClass: 'text-milionaria', schedule: 'Qua e Sáb' }
+        };
+        let tickerCountdownInterval = null;
+
+        const getCloverUri = (color) => {
+            const resolvedColor = color.startsWith('var(') ? getComputedStyle(document.documentElement).getPropertyValue(color.match(/--[a-zA-Z0-9-]+/)[0]).trim() : color;
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${resolvedColor}" stroke="black" stroke-width="0.5"><path d="M16.4,9.7c0.2,1-0.4,2.1-1.4,2.3c-0.3,0.1-0.6,0-0.8-0.2c-0.8-0.8-1.2-1.8-1.2-2.9c0-0.7,0.2-1.4,0.5-2c0.2-0.4,0.1-0.9-0.3-1.1C13,5.7,12.5,5.7,12.2,6C11.6,6.6,11,7,10.3,7.3c-1,0.4-2.1-0.2-2.4-1.2c-0.3-1,0.4-2.1,1.4-2.4c0.3-0.1,0.7,0,0.9,0.2c0.8,0.8,1.2,1.8,1.2,2.9c0,0.7-0.2,1.4-0.5,2c-0.2,0.4-0.1,0.9,0.3,1.1c0.2,0.1,0.4,0.2,0.6,0.2c0.1,0,0.2,0,0.3-0.1c0.6-0.2,1-0.6,1.2-1.2c0.3-0.8,0.2-1.7-0.3-2.4c-0.6-0.9-1.3-1.6-2.2-2.2c-1.3-0.9-2.9-1.2-4.4-0.9c-2.1,0.4-3.7,2-4,4.1c-0.4,2.3,1,4.6,3.1,5.5c0.9,0.4,1.8,0.5,2.7,0.5c1.2,0,2.4-0.4,3.5-1.1c0.8-0.5,1.5-1.2,2.1-2c0.3-0.4,0.2-0.9-0.2-1.2c-0.4-0.3-0.9-0.2-1.2,0.2c-0.5,0.7-1.1,1.3-1.8,1.7c-1.7,1-3.8,0.6-5-1.1c-1.4-1-2.1-2.6-1.8-4.2c0.2-1.4,1.3-2.5,2.7-2.8c1-0.2,2.1,0,3,0.6c0.6,0.4,1.1,1,1.5,1.6c0.5,0.8,0.6,1.7,0.3,2.5c-0.1,0.4,0,0.8,0.3,1.1c0.3,0.3,0.7,0.4,1,0.3c1-0.2,1.6-1.2,1.4-2.3c-0.1-0.7-0.4-1.3-0.8-1.7c-0.5-0.6-1.2-1-1.9-1.3c-1-0.4-2.1,0.2-2.4,1.2c-0.3,1,0.4,2.1,1.4,2.4c0.3,0.1,0.7,0,0.9-0.2c0.8-0.8,1.2,1.8,1.2,2.9c0-0.7-0.2-1.4-0.5-2c-0.2-0.4-0.1-0.9,0.3-1.1c0.4-0.2,0.9-0.1,1.1,0.3c0.6,0.9,1.3,1.6,2.2,2.2c1.3,0.9,2.9,1.2,4.4,0.9c2.1-0.4,3.7,2,4-4.1c0.4-2.3-1-4.6-3.1-5.5c-1.8-0.8-3.9-0.5-5.4,0.8c-0.8,0.7-1.5,1.5-2,2.4c-0.3,0.4-0.2,0.9,0.2,1.2c0.4,0.3,0.9,0.2,1.2-0.2c0.5-0.7,1-1.3,1.7-1.7c1.7-1,3.8-0.6,5,1.1C16.6,5.1,17.2,6.7,17,8.3c-0.1,0.9-0.6,1.7-1.2,2.3c-0.1,0.1-0.2,0.3-0.2,0.5c0,0.2,0.1,0.4,0.2,0.5c0.3,0.3,0.7,0.4,1,0.3C16.6,11.7,17.2,10.7,17,9.7L16.4,9.7z"/></svg>`;
+            return `data:image/svg+xml;base64,${btoa(svg)}`;
+        }
+
+        const updateLiveCountdowns = () => {
+            document.querySelectorAll('.live-countdown').forEach(el => {
+                const targetDate = new Date(el.dataset.date);
+                const diff = targetDate - new Date();
+                if (diff < 0) { el.textContent = 'Sorteio em andamento'; return; }
+                const s = Math.floor(diff / 1000), d = Math.floor(s / 86400);
+                const h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+                if (d > 0) el.textContent = `em ${d}d ${String(h).padStart(2,'0')}h`;
+                else el.textContent = `em ${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m`;
+            });
+        };
+        
+        const renderStaticTicker = () => {
+            if (!ui.tickerContent) return;
+            let tickerHTML = '';
+            for (const key in TICKER_CONFIG) {
+                const config = TICKER_CONFIG[key];
+                const separatorImgTag = `<img src="${getCloverUri(config.color)}" class="inline-block h-4 w-4 mx-4" alt="separador">`;
+                const itemHTML = `
+                    <div class="ticker-content-item">
+                        <span class="ticker-game-name ${config.colorClass}">${config.name}</span>
+                        <span class="ml-3 text-gray-300">Sorteios: ${config.schedule}</span>
+                    </div>`;
+                tickerHTML += separatorImgTag + itemHTML;
+            }
+            ui.tickerContent.innerHTML = tickerHTML + tickerHTML;
+        };
+        
+        async function updateTicker() {
+            if (!ui.tickerContent) return;
+            if(tickerCountdownInterval) clearInterval(tickerCountdownInterval);
+            ui.tickerContent.innerHTML = `<div class="ticker-content-item" style="width: 100%; justify-content: center;">Buscando dados oficiais...</div>`;
+
+            // O caminho para a função serverless no Netlify
+            const serverlessFunctionBase = '/.netlify/functions/get-lottery-data?game=';
+            
+            const promises = Object.keys(TICKER_CONFIG).map(key => 
+                fetch(serverlessFunctionBase + key).then(res => {
+                    if (!res.ok) throw new Error(`Falha ao buscar dados para ${key}`);
+                    return res.json();
+                })
+            );
+
+            try {
+                const results = await Promise.allSettled(promises);
+                let tickerHTML = '';
+                const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+                let successCount = 0;
+
+                results.forEach(result => {
+                    if (result.status === 'fulfilled' && result.value) {
+                        const game = result.value;
+                        const gameTypeKey = game.tipoJogo.toLowerCase().replace(/ /g, '');
+                        const config = TICKER_CONFIG[gameTypeKey];
+                        if (!config || !game.dataProximoConcurso) return;
+                        
+                        successCount++;
+                        const drawDate = new Date(game.dataProximoConcurso);
+                        const formattedDate = `${weekDays[drawDate.getDay()]} ${drawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
+                        const estimatedPrize = formatCurrency(game.valorEstimadoProximoConcurso);
+                        const separatorImgTag = `<img src="${getCloverUri(config.color)}" class="inline-block h-4 w-4 mx-4" alt="separador">`;
+                        
+                        const itemHTML = `
+                            <div class="ticker-content-item">
+                                <span class="ticker-game-name ${config.colorClass}">${config.name}</span>
+                                <span class="ml-3 text-gray-300">Próximo Sorteio: ${formattedDate}</span>
+                                <span class="ticker-prize">${estimatedPrize}</span>
+                                <span class="live-countdown ml-3 text-amber-300" data-date="${drawDate.toISOString()}"></span>
+                            </div>`;
+                        tickerHTML += separatorImgTag + itemHTML;
+                    } else if (result.status === 'rejected') {
+                         console.warn("Falha ao carregar dados de um jogo:", result.reason);
+                    }
+                });
+
+                if (successCount === 0) throw new Error("Nenhum dado de sorteio pôde ser carregado das fontes oficiais.");
+
+                ui.tickerContent.innerHTML = tickerHTML + tickerHTML;
+                updateLiveCountdowns();
+                tickerCountdownInterval = setInterval(updateLiveCountdowns, 60000);
+
+            } catch (error) {
+                console.warn("Não foi possível buscar dados ao vivo. Exibindo calendário de sorteios.", error);
+                renderStaticTicker();
+            }
+        }
+        
+        // LÓGICA DO GERADOR DE APOSTAS
+        function openGeneratorChoiceModal() {
+            const content = `
+                <h3 class="text-xl font-semibold mb-6 text-center">Escolha o Tipo de Gerador</h3>
+                <div class="space-y-4">
+                     <button id="open-advanced-generator" class="w-full text-left glass-card p-4 rounded-xl font-semibold flex items-center justify-between text-base hover:bg-white/20 transition-all">
+                        <div>
+                            <p>Gerador Avançado</p>
+                            <p class="text-xs font-normal text-gray-300 mt-1">Sugestões baseadas em análise estatística.</p>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                    <button id="open-manual-generator" class="w-full text-left glass-card p-4 rounded-xl font-semibold flex items-center justify-between text-base hover:bg-white/20 transition-all">
+                        <div>
+                            <p>Gerador Manual</p>
+                            <p class="text-xs font-normal text-gray-300 mt-1">Use suas próprias lógicas e resultados.</p>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                </div>
+            `;
+            createModal(content);
+            document.getElementById('open-manual-generator').onclick = () => {
+                document.querySelector('#active-modal .modal-close-button')?.click();
+                setTimeout(openGeneratorModal, 300);
+            };
+            document.getElementById('open-advanced-generator').onclick = () => {
+                document.querySelector('#active-modal .modal-close-button')?.click();
+                setTimeout(openAdvancedGeneratorModal, 300);
+            };
+        }
+
+        const getUniqueNumbers = (numbers, count, maxNum, pool) => {
+            const unique = new Set(numbers.filter(n => n > 0 && n <= maxNum));
+            while (unique.size < count && pool.length > 0) {
+                const randomFromPool = pool[Math.floor(Math.random() * pool.length)];
+                if (!unique.has(randomFromPool)) unique.add(randomFromPool);
+            }
+            while (unique.size < count) {
+                const randomNumber = Math.floor(Math.random() * maxNum) + 1;
+                unique.add(randomNumber);
+            }
+            return Array.from(unique).slice(0, count);
+        };
+
+        function generateWithDiagonalLogic(results, gameConfig) {
+            const numbersOnly = results.map(r => r.numbers);
+            const matrixSize = Math.min(numbersOnly.length, gameConfig.numResults);
+            const mainDiagonal = [];
+            const antiDiagonal = [];
+
+            if (matrixSize > 0) {
+                for (let i = 0; i < matrixSize; i++) {
+                    if (numbersOnly[i] && typeof numbersOnly[i][i] !== 'undefined') {
+                        mainDiagonal.push(numbersOnly[i][i]);
+                    }
+                    if (numbersOnly[i] && typeof numbersOnly[i][matrixSize - 1 - i] !== 'undefined') {
+                        antiDiagonal.push(numbersOnly[i][matrixSize - 1 - i]);
+                    }
+                }
+            }
+            return [mainDiagonal, antiDiagonal];
+        }
+
+        function generateWithColumnSumLogic(results, gameConfig) {
+            const numbersOnly = results.map(r => r.numbers);
+            const flatPool = [...new Set(numbersOnly.flat())];
+            let generated = [];
+            const sumDigits = (n) => String(n).split('').reduce((acc, digit) => acc + parseInt(digit, 10), 0);
+            for (let col = 0; col < gameConfig.inputs; col++) {
+                let columnDigitSum = 0;
+                for (let row = 0; row < numbersOnly.length; row++) {
+                    const numberInColumn = numbersOnly[row][col % gameConfig.numResults] || 0;
+                    columnDigitSum += sumDigits(numberInColumn);
+                }
+                let finalNum = columnDigitSum;
+                while (finalNum === 0 || finalNum > gameConfig.maxNum || generated.includes(finalNum)) {
+                    if (finalNum > gameConfig.maxNum || generated.includes(finalNum)) finalNum = sumDigits(finalNum);
+                    if (generated.includes(finalNum) || finalNum === 0) {
+                        finalNum++;
+                        if (finalNum > gameConfig.maxNum) finalNum = 1;
+                    }
+                }
+                generated.push(finalNum);
+            }
+            return getUniqueNumbers(generated, gameConfig.inputs, gameConfig.maxNum, flatPool);
+        }
+
+        function generateWithRandomRecentLogic(results, gameConfig) {
+            const numbersOnly = results.map(r => r.numbers);
+            const flatPool = [...new Set(numbersOnly.flat())];
+            for (let i = flatPool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [flatPool[i], flatPool[j]] = [flatPool[j], flatPool[i]];
+            }
+            return flatPool.slice(0, gameConfig.inputs);
+        }
+
+        // MODAL DO GERADOR MANUAL
+        function openGeneratorModal() {
+            const modalContent = `
+                <h3 class="text-xl font-semibold mb-6">Gerador Manual</h3>
+                <form id="generator-form">
+                    <div class="space-y-4">
+                        <select name="gameName" class="custom-select w-full rounded-lg p-3" required>
+                            <option value="">Selecione a Modalidade</option>
+                            ${Object.keys(LOTTERY_GAMES).map(name => `<option value="${name}">${name}</option>`).join('')}
+                        </select>
+                        
+                        <div id="image-input-section" class="hidden">
+                            <input type="file" id="ocr-image-input" class="hidden" accept="image/*">
+                            <label for="ocr-image-input" id="drop-zone-wrapper" class="block p-4 border-2 border-dashed border-gray-600 rounded-lg transition-all cursor-pointer">
+                                <div id="paste-zone" class="text-center text-gray-400 text-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-2 text-gray-500"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                                    <p>Clique aqui, ou arraste e cole (Ctrl+V) o print</p>
+                                    <p class="text-xs text-gray-500 mt-1">para preencher os campos abaixo</p>
+                                </div>
+                            </label>
+                            <div id="ocr-status" class="text-xs text-center text-gray-400 h-5 flex items-center justify-center hidden"></div>
+                        </div>
+                        
+                        <div id="manual-inputs-container" class="hidden"></div>
+
+                        <div id="logic-selection-section" class="hidden">
+                             <select name="logicType" class="custom-select w-full rounded-lg p-3" required>
+                                <option value="">Selecione a Lógica</option>
+                                <option value="diagonal">Lógica 1: Análise Diagonal em X</option>
+                                <option value="columnSum">Lógica 2: Soma Vertical de Dígitos</option>
+                                <option value="randomRecent">Lógica 3: Aleatório Entre Recentes</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-600 rounded-lg p-3 font-semibold transition-all !mt-6">Gerar Aposta</button>
+                    </div>
+                </form>
+                <div id="generator-result" class="mt-6 min-h-[80px] hidden"></div>`;
+            createModal(modalContent);
+
+            setTimeout(() => {
+                const form = document.getElementById('generator-form');
+                if (!form) return;
+
+                const gameSelect = form.querySelector('[name="gameName"]');
+                const imageInputSection = form.querySelector('#image-input-section');
+                const dropZoneWrapper = form.querySelector('#drop-zone-wrapper');
+                const manualInputsContainer = form.querySelector('#manual-inputs-container');
+                const logicSelectionSection = form.querySelector('#logic-selection-section');
+                const ocrInput = form.querySelector('#ocr-image-input');
+                const ocrStatus = form.querySelector('#ocr-status');
+                const resultContainer = form.parentElement.querySelector('#generator-result');
+                const activeModal = document.getElementById('active-modal');
+
+                async function preprocessImage(file) {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            const img = new Image();
+                            img.onload = function() {
+                                const canvas = document.createElement('canvas');
+                                const ctx = canvas.getContext('2d');
+                                const scaleFactor = 2;
+                                canvas.width = img.width * scaleFactor;
+                                canvas.height = img.height * scaleFactor;
+                                
+                                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                
+                                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                                const data = imageData.data;
+                                let totalBrightness = 0;
+
+                                for (let i = 0; i < data.length; i += 4) {
+                                    const brightness = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                                    totalBrightness += brightness;
+                                    const color = brightness > 128 ? 255 : 0;
+                                    data[i] = data[i+1] = data[i+2] = color;
+                                }
+
+                                const avgBrightness = totalBrightness / (data.length / 4);
+                                if (avgBrightness < 128) { 
+                                    for (let i = 0; i < data.length; i += 4) {
+                                        const color = data[i];
+                                        data[i] = data[i+1] = data[i+2] = 255 - color;
+                                    }
+                                }
+                                
+                                ctx.putImageData(imageData, 0, 0);
+                                resolve(canvas.toDataURL('image/png'));
+                            }
+                            img.onerror = reject;
+                            img.src = event.target.result;
+                        }
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+                }
+
+                const runOCR = async (file) => {
+                    if (!file) return;
+                    if (!gameSelect.value) {
+                        alert("Por favor, selecione uma modalidade antes de inserir a imagem.");
+                        return;
+                    }
+                    
+                    ocrStatus.classList.remove('hidden');
+                    ocrStatus.textContent = 'Otimizando imagem...';
+
+                    try {
+                        const processedImage = await preprocessImage(file);
+
+                        const worker = await Tesseract.createWorker('por', 1, {
+                            logger: m => {
+                                if (m.status.startsWith('loading language')) {
+                                    const progress = (m.progress * 100).toFixed(0);
+                                    ocrStatus.textContent = `Baixando pacotes... ${progress}%`;
+                                } else if (m.status === 'recognizing text') {
+                                    const progress = (m.progress * 100).toFixed(0);
+                                    ocrStatus.textContent = `Lendo imagem... ${progress}%`;
+                                }
+                            },
+                        });
+
+                        await worker.setParameters({
+                            tessedit_char_whitelist: '0123456789',
+                            tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+                            load_system_dawg: '0',
+                            load_freq_dawg: '0',
+                            classify_bln_numeric_mode: '1',
+                        });
+
+                        const { data: { text } } = await worker.recognize(processedImage);
+                        await worker.terminate();
+                        
+                        const numbers = text.match(/\d+/g)?.join('').split('') || [];
+                        const allNumberFields = form.querySelectorAll('input[name="manualResult"]');
+                        const allTrevosFields = form.querySelectorAll('input[name="manualTrevos"]');
+                        const allFields = [...allNumberFields, ...allTrevosFields];
+
+                        allFields.forEach((field, index) => {
+                            const numberPair = (numbers[index * 2] || '') + (numbers[index * 2 + 1] || '');
+                            if (numberPair) {
+                                field.value = numberPair;
+                                field.dispatchEvent(new Event('blur'));
+                            }
+                        });
+                        
+                        ocrStatus.textContent = 'Leitura Concluída!';
+                         if (numbers.length < allFields.length * 2) {
+                            alert('A leitura da imagem pode estar incompleta. Por favor, verifique e preencha os campos restantes manualmente.');
+                        }
+                    } catch (error) {
+                        console.error('Erro no OCR:', error);
+                        ocrStatus.textContent = 'Falha ao ler imagem.';
+                    } finally {
+                        setTimeout(() => { ocrStatus.classList.add('hidden'); ocrStatus.textContent = ''; }, 3000);
+                    }
+                };
+
+                const handleAutoTab = (e) => {
+                    const target = e.target;
+                    if (target.value.length >= target.maxLength) {
+                        const allInputs = Array.from(form.querySelectorAll('input[type="number"]:not([disabled])'));
+                        const currentIndex = allInputs.indexOf(target);
+                        if (currentIndex > -1 && currentIndex < allInputs.length - 1) {
+                            allInputs[currentIndex + 1].focus();
+                        }
+                    }
+                };
+
+                const validateInput = (e, maxNum) => {
+                    const input = e.target;
+                    const value = parseInt(input.value, 10);
+                    if (input.value && (isNaN(value) || value < 1 || value > maxNum)) {
+                        input.classList.add('invalid');
+                    } else {
+                        input.classList.remove('invalid');
+                    }
+                };
+
+                const ICONS = {
+                    up: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>`,
+                    down: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`
+                };
+                
+                gameSelect.onchange = () => {
+                    const gameName = gameSelect.value;
+                    ocrStatus.textContent = '';
+                    ocrStatus.classList.add('hidden');
+                    resultContainer.classList.add('hidden');
+
+                    if (!gameName) {
+                        manualInputsContainer.innerHTML = '';
+                        [imageInputSection, manualInputsContainer, logicSelectionSection].forEach(el => el.classList.add('hidden'));
+                        return;
+                    }
+                    [imageInputSection, manualInputsContainer, logicSelectionSection].forEach(el => el.classList.remove('hidden'));
+
+                    const gameConfig = LOTTERY_GAMES[gameName];
+                    let html = `<div class="flex justify-between items-center">
+                                    <p class="text-sm text-gray-300">Informe os últimos ${gameConfig.numResults} resultados:</p>
+                                    <div class="flex items-center">
+                                        <button type="button" id="toggle-numbers-btn" class="text-gray-300 hover:text-white p-1">${ICONS.down}</button>
+                                        <button type="button" id="clear-manual-inputs" class="text-xs text-cyan-400 hover:text-cyan-300 font-semibold px-2 py-1">Limpar</button>
+                                    </div>
+                                </div>
+                                <div id="collapsible-numbers-wrapper" class="space-y-3 mt-2 transition-all hidden">`;
+
+                    for (let i = 0; i < gameConfig.numResults; i++) {
+                        html += `<div class="p-2 bg-black/20 rounded-lg"><p class="text-xs text-gray-400 mb-2 ml-1">Resultado ${i + 1}</p><div class="flex flex-wrap gap-2 justify-center">`;
+                        for (let j = 0; j < gameConfig.numResults; j++) {
+                            html += `<div class="input-ball h-9 w-9 rounded-full flex items-center justify-center bg-white/10"><input type="number" name="manualResult" min="1" max="${gameConfig.maxNum}" maxlength="2" class="text-sm" required></div>`;
+                        }
+                        if (gameConfig.trevos) {
+                             html += `<span class="text-xl font-light mx-1 self-center">+</span>`;
+                             for (let t = 0; t < gameConfig.trevos; t++) {
+                                html += `<div class="input-ball h-9 w-9 rounded-full flex items-center justify-center bg-cyan-800/80"><input type="number" name="manualTrevos" min="1" max="${gameConfig.maxTrevos}" maxlength="2" class="text-sm" required></div>`;
+                             }
+                        }
+                        html += `</div></div>`;
+                    }
+                    html += `</div>`;
+                    manualInputsContainer.innerHTML = html;
+                    
+                    document.getElementById('clear-manual-inputs').onclick = () => {
+                        const allInputs = manualInputsContainer.querySelectorAll('input[type="number"]');
+                        allInputs.forEach(input => {
+                            input.value = '';
+                            input.classList.remove('invalid');
+                        });
+                    };
+
+                    const toggleBtn = document.getElementById('toggle-numbers-btn');
+                    const collapsibleWrapper = document.getElementById('collapsible-numbers-wrapper');
+                    toggleBtn.onclick = () => {
+                        const isHidden = collapsibleWrapper.classList.toggle('hidden');
+                        toggleBtn.innerHTML = isHidden ? ICONS.down : ICONS.up;
+                    };
+
+                    const allInputs = manualInputsContainer.querySelectorAll('input[type="number"]');
+                    allInputs.forEach(input => {
+                        input.addEventListener('input', handleAutoTab);
+                        input.addEventListener('blur', (e) => validateInput(e, input.max || gameConfig.maxNum));
+                    });
+                };
+                
+                ocrInput.onchange = (e) => {
+                    const file = e.target.files[0];
+                    runOCR(file);
+                };
+
+                if (activeModal) {
+                    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                        activeModal.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
+                    });
+                    
+                    ['dragenter', 'dragover'].forEach(eventName => {
+                        activeModal.addEventListener(eventName, () => dropZoneWrapper.classList.add('drag-over'), false);
+                    });
+
+                    ['dragleave', 'drop'].forEach(eventName => {
+                        activeModal.addEventListener(eventName, () => dropZoneWrapper.classList.remove('drag-over'), false);
+                    });
+
+                    activeModal.addEventListener('drop', (e) => {
+                        const file = e.dataTransfer.files[0];
+                        runOCR(file);
+                    });
+
+                    activeModal.addEventListener('paste', (e) => {
+                        const items = e.clipboardData.items;
+                        for (const item of items) {
+                            if (item.type.indexOf('image') !== -1) {
+                                e.preventDefault();
+                                const file = item.getAsFile();
+                                runOCR(file);
+                                return;
+                            }
+                        }
+                    });
+                }
+
+                form.onsubmit = (e) => {
+                    e.preventDefault();
+                    const gameName = form.gameName.value;
+                    const logicType = form.logicType.value;
+                    const gameConfig = LOTTERY_GAMES[gameName];
+                    
+                    resultContainer.classList.add('hidden');
+
+                    if (!gameName || !logicType) {
+                        resultContainer.innerHTML = `<p class="text-center text-yellow-400">Por favor, selecione a modalidade e a lógica.</p>`;
+                        resultContainer.classList.remove('hidden');
+                        return;
+                    }
+                    
+                    const allNumberInputs = Array.from(form.querySelectorAll('input[name="manualResult"]'));
+                    if (allNumberInputs.length === 0) {
+                        resultContainer.innerHTML = `<p class="text-center text-yellow-400">Preencha os resultados primeiro.</p>`;
+                        resultContainer.classList.remove('hidden');
+                        return;
+                    }
+
+                    const lastResults = [];
+                    let hasInvalidInput = false;
+
+                    for (let i = 0; i < allNumberInputs.length; i += gameConfig.numResults) {
+                        const contestChunk = allNumberInputs.slice(i, i + gameConfig.numResults);
+                        const contestNumbers = contestChunk.map(input => {
+                            const val = parseInt(input.value, 10);
+                            if(isNaN(val) || val < 1 || val > gameConfig.maxNum) hasInvalidInput = true;
+                            return val;
+                        });
+                        lastResults.push({ numbers: contestNumbers });
+                    }
+
+                    if(hasInvalidInput) {
+                         resultContainer.innerHTML = `<p class="text-center text-red-400">Preencha todos os números corretamente. Verifique os campos com borda vermelha.</p>`;
+                         resultContainer.classList.remove('hidden');
+                         return;
+                    }
+
+                    let generatedBets = [];
+                    switch (logicType) {
+                        case 'diagonal':
+                            generatedBets = generateWithDiagonalLogic(lastResults, gameConfig);
+                            break;
+                        case 'columnSum':
+                            generatedBets.push(generateWithColumnSumLogic(lastResults, gameConfig));
+                            break;
+                        case 'randomRecent':
+                            generatedBets.push(generateWithRandomRecentLogic(lastResults, gameConfig));
+                            break;
+                    }
+
+                    let trevos = [];
+                    if (gameConfig.trevos) {
+                        const allTrevosInputs = [...new Set(Array.from(form.querySelectorAll('input[name="manualTrevos"]')).map(i => parseInt(i.value)).filter(v => !isNaN(v)))];
+                        while(trevos.length < gameConfig.trevos && allTrevosInputs.length > 0) {
+                            const randomIndex = Math.floor(Math.random() * allTrevosInputs.length);
+                            trevos.push(allTrevosInputs.splice(randomIndex, 1)[0]);
+                        }
+                    }
+                    
+                    let resultHTML = '';
+                    generatedBets.forEach((bet, index) => {
+                        if (bet.length === 0) return;
+                        let title = `Aposta gerada para ${gameName}:`;
+                        if (generatedBets.length > 1) {
+                            title = `Aposta Gerada (Opção ${index + 1}):`;
+                        }
+                        resultHTML += `
+                            <div class="${index > 0 ? 'mt-4' : ''}">
+                                <p class="text-sm text-center text-gray-300 mb-3">${title}</p>
+                                <div class="flex flex-wrap gap-2 justify-center items-center">
+                                    ${bet.sort((a, b) => a - b).map(n => `<div class="input-ball h-10 w-10 rounded-full flex items-center justify-center text-base font-semibold ${gameConfig.color}">${String(n).padStart(2, '0')}</div>`).join('')}
+                                    ${trevos.length > 0 ? `<span class="text-xl font-light mx-1">+</span>` : ''}
+                                    ${trevos.sort((a,b) => a-b).map(t => `<div class="input-ball h-10 w-10 rounded-full flex items-center justify-center text-base font-semibold bg-cyan-800/80">${String(t).padStart(2, '0')}</div>`).join('')}
+                                </div>
+                            </div>`;
+                    });
+
+                    if (resultHTML) {
+                        resultContainer.innerHTML = resultHTML;
+                        resultContainer.classList.remove('hidden');
+                    }
+                };
+
+            }, 0); 
+        }
+
+        // MODAL DO GERADOR AVANÇADO
+        function openAdvancedGeneratorModal() {
+             const modalContent = `
+                <h3 class="text-xl font-semibold mb-6">Gerador Avançado</h3>
+                <form id="advanced-generator-form">
+                    <div class="space-y-4">
+                        <select name="gameName" class="custom-select w-full rounded-lg p-3" required>
+                            <option value="">Selecione a Modalidade</option>
+                             ${Object.keys(LOTTERY_GAMES).map(name => `<option value="${name}">${name}</option>`).join('')}
+                        </select>
+                        <select name="strategy" class="custom-select w-full rounded-lg p-3" required>
+                            <option value="">Selecione a Estratégia</option>
+                            <option value="hot">Números Quentes (Mais Frequentes)</option>
+                            <option value="cold">Números Frios (Menos Frequentes)</option>
+                            <option value="evenOdd">Equilíbrio Par/Ímpar</option>
+                            <option value="sum">Equilíbrio da Soma</option>
+                        </select>
+                        <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-600 rounded-lg p-3 font-semibold transition-all !mt-6">Gerar Aposta</button>
+                    </div>
+                </form>
+                <div id="advanced-generator-result" class="mt-6 min-h-[80px]"></div>
+             `;
+             createModal(modalContent);
+             
+             const form = document.getElementById('advanced-generator-form');
+             form.onsubmit = (e) => {
+                e.preventDefault();
+                const gameName = form.gameName.value;
+                const strategy = form.strategy.value;
+                const gameConfig = LOTTERY_GAMES[gameName];
+                const resultContainer = document.getElementById('advanced-generator-result');
+
+                if (!gameName || !strategy) {
+                    resultContainer.innerHTML = `<p class="text-center text-yellow-400">Por favor, selecione a modalidade e a estratégia.</p>`;
+                    return;
+                }
+
+                const historicalPrizes = allPrizes.filter(p => p.gameName === gameName && (p.winningNumbers?.length > 0 || p.playedNumbers?.length > 0));
+                if (historicalPrizes.length === 0) {
+                     resultContainer.innerHTML = `<p class="text-center text-yellow-400 text-sm">Dados insuficientes. Cadastre ao menos um prêmio de ${gameName} para usar esta função.</p>`;
+                    return;
+                }
+                const historicalNumbers = historicalPrizes.flatMap(p => p.winningNumbers?.length ? p.winningNumbers : p.playedNumbers);
+
+                let generatedBet = [];
+                let trevos = []; 
+
+                 switch (strategy) {
+                    case 'hot': {
+                        const counts = historicalNumbers.reduce((a, n) => ({ ...a, [n]: (a[n] || 0) + 1 }), {});
+                        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(e => parseInt(e[0]));
+                        generatedBet = getUniqueNumbers(sorted, gameConfig.inputs, gameConfig.maxNum, sorted);
+                        break;
+                    }
+                    case 'cold': {
+                         const allPossibleNumbers = Array.from({length: gameConfig.maxNum}, (_, i) => i + 1);
+                         const counts = historicalNumbers.reduce((a, n) => ({ ...a, [n]: (a[n] || 0) + 1 }), {});
+                         const sorted = allPossibleNumbers.sort((a, b) => (counts[a] || 0) - (counts[b] || 0));
+                         generatedBet = getUniqueNumbers(sorted, gameConfig.inputs, gameConfig.maxNum, sorted);
+                        break;
+                    }
+                    case 'evenOdd': {
+                        let attempts = 0;
+                        while(attempts < 1000) {
+                            let tempBet = new Set();
+                            while(tempBet.size < gameConfig.inputs) {
+                                tempBet.add(Math.floor(Math.random() * gameConfig.maxNum) + 1);
+                            }
+                            const betArray = [...tempBet];
+                            const evenCount = betArray.filter(n => n % 2 === 0).length;
+                            if (evenCount >= Math.floor(gameConfig.inputs * 0.4) && evenCount <= Math.ceil(gameConfig.inputs * 0.6)) {
+                                generatedBet = betArray;
+                                break;
+                            }
+                            attempts++;
+                        }
+                        if(generatedBet.length === 0) generatedBet = getUniqueNumbers([], gameConfig.inputs, gameConfig.maxNum, historicalNumbers);
+                        break;
+                    }
+                    case 'sum': {
+                        const sums = historicalPrizes.map(p => (p.winningNumbers || p.playedNumbers).reduce((a,b) => a+b, 0));
+                        const avgSum = sums.reduce((a,b) => a+b, 0) / sums.length;
+                        const stdDev = Math.sqrt(sums.map(s => Math.pow(s - avgSum, 2)).reduce((a,b) => a+b, 0) / sums.length);
+                        const minSum = avgSum - stdDev;
+                        const maxSum = avgSum + stdDev;
+                        
+                        let attempts = 0;
+                        while(attempts < 1000) {
+                             let tempBet = new Set();
+                            while(tempBet.size < gameConfig.inputs) {
+                                tempBet.add(Math.floor(Math.random() * gameConfig.maxNum) + 1);
+                            }
+                            const betArray = [...tempBet];
+                            const currentSum = betArray.reduce((a,b) => a+b, 0);
+                            if(currentSum >= minSum && currentSum <= maxSum) {
+                                generatedBet = betArray;
+                                break;
+                            }
+                            attempts++;
+                        }
+                         if(generatedBet.length === 0) generatedBet = getUniqueNumbers([], gameConfig.inputs, gameConfig.maxNum, historicalNumbers);
+                        break;
+                    }
+                }
+                
+                let resultHTML = `<p class="text-sm text-center text-gray-300 mb-3">Aposta sugerida para ${gameName}:</p>
+                                <div class="flex flex-wrap gap-2 justify-center items-center">
+                                    ${generatedBet.sort((a, b) => a - b).map(n => `<div class="input-ball h-10 w-10 rounded-full flex items-center justify-center text-base font-semibold ${gameConfig.color}">${String(n).padStart(2, '0')}</div>`).join('')}
+                                    ${trevos.length > 0 ? `<span class="text-xl font-light mx-1">+</span>` : ''}
+                                    ${trevos.sort((a,b) => a-b).map(t => `<div class="input-ball h-10 w-10 rounded-full flex items-center justify-center text-base font-semibold bg-cyan-800/80">${String(t).padStart(2, '0')}</div>`).join('')}
+                                </div>
+                                <p class="text-xs text-gray-400 text-center mt-4">Análise baseada em ${historicalPrizes.length} prêmios cadastrados.</p>
+                `;
+                resultContainer.innerHTML = resultHTML;
+             };
+        }
+        
+        // --- FUNÇÕES DE AUTH, MODAL, HELPERS, UNDO/REDO ---
+        const getExpiryInfo = (dateStr) => {
+            if(!dateStr) return { text: 'Data inválida', color: 'text-gray-500'};
+            const expiryDate = new Date(dateStr + 'T12:00:00Z'); expiryDate.setDate(expiryDate.getDate() + 90);
+            const daysLeft = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+            if (daysLeft <= 0) return { text: 'Expirado', color: 'text-gray-500' };
+            if (daysLeft <= 15) return { text: `${daysLeft} dias restantes`, color: 'text-red-400' };
+            if (daysLeft <= 30) return { text: `${daysLeft} dias restantes`, color: 'text-yellow-400' };
+            return { text: `${daysLeft} dias restantes`, color: 'text-green-400' };
+        };
+        const parseCurrency = (str) => parseFloat((str || '').replace(/\./g, '').replace(',', '.')) || 0;
+        document.addEventListener('input', e => {
+            if(e.target.classList.contains('currency-input')) {
+                let v = e.target.value.replace(/\D/g, ''); e.target.value = v ? (parseInt(v) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '';
+            }
+        });
+        
+        // FUNÇÃO GENÉRICA PARA CRIAR MODAIS
+        function createModal(content) {
+            const existingModal = document.getElementById('active-modal');
+            if(existingModal) existingModal.remove();
+
+            const modal = document.getElementById('modal-template').cloneNode(true); modal.id = 'active-modal';
+            const modalContent = modal.querySelector('.modal-content'); modalContent.innerHTML = content;
+            modalContent.insertAdjacentHTML('afterbegin', `<button class="modal-close-button absolute top-4 right-4 text-gray-400 hover:text-white text-3xl leading-none">&times;</button>`);
+            document.body.appendChild(modal);
+            const closeModal = () => { modal.classList.add('opacity-0'); modalContent.classList.add('scale-95', 'opacity-0'); setTimeout(() => modal.remove(), 300); };
+            modal.querySelector('.modal-close-button').onclick = closeModal;
+            modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+            modal.classList.replace('hidden', 'flex');
+            setTimeout(() => { modal.classList.remove('opacity-0'); modalContent.classList.remove('scale-95', 'opacity-0'); }, 10);
+        }
+        
+        // LÓGICA DE AUTENTICAÇÃO (LOGIN/CADASTRO/LOGOUT)
+        document.getElementById('auth-form').onsubmit = (e) => e.preventDefault();
+        document.getElementById('login-button').onclick = () => handleAuth(signInWithEmailAndPassword);
+        document.getElementById('signup-button').onclick = () => handleAuth(createUserWithEmailAndPassword);
+        document.getElementById('logout-button').onclick = () => signOut(auth);
+        async function handleAuth(authFn) {
+            const email = document.getElementById('email').value, password = document.getElementById('password').value, errorEl = document.getElementById('auth-error');
+            errorEl.textContent = '';
+            try { await authFn(auth, email, password); }
+            catch (error) {
+                switch (error.code) {
+                    case 'auth/weak-password': errorEl.textContent = 'A senha deve ter no mínimo 6 caracteres.'; break;
+                    case 'auth/email-already-in-use': errorEl.textContent = 'Este e-mail já está cadastrado.'; break;
+                    case 'auth/invalid-email': errorEl.textContent = 'O formato do e-mail é inválido.'; break;
+                    case 'auth/user-not-found': case 'auth/wrong-password': errorEl.textContent = 'E-mail ou senha inválidos.'; break;
+                    default: errorEl.textContent = 'Erro ao autenticar. Tente novamente.';
+
+                }
+            }
+        }
+
+        // LÓGICA DE DESFAZER E REFAZER (UNDO/REDO)
+        const addActionToHistory = (action) => { historyStack.push(action); redoStack = []; updateUndoRedoButtons(); };
+        const updateUndoRedoButtons = () => { ui.undoButton.disabled = historyStack.length === 0; ui.redoButton.disabled = redoStack.length === 0; };
+        
+        async function executeAction(action, isRedo) {
+            const batch = writeBatch(db);
+            const getRef = (item) => doc(db, 'users', auth.currentUser.uid, item.collection, item.id);
+            switch(action.type) {
+                case 'add':
+                    isRedo ? batch.set(getRef(action), action.data) : batch.delete(getRef(action));
+                    break;
+                case 'delete':
+                    isRedo ? batch.delete(getRef(action)) : batch.set(getRef(action), action.data);
+                    break;
+                case 'update':
+                    batch.set(getRef(action), isRedo ? action.newData : action.oldData);
+                    break;
+
+            }
+            await batch.commit();
+        }
+        
+        ui.undoButton.onclick = async () => {
+            if (historyStack.length === 0) return;
+            const lastAction = historyStack.pop();
+            await executeAction(lastAction, false);
+            redoStack.push(lastAction);
+            updateUndoRedoButtons();
+        };
+
+        ui.redoButton.onclick = async () => {
+            if (redoStack.length === 0) return;
+            const lastRedoAction = redoStack.pop();
+            await executeAction(lastRedoAction, true);
+            historyStack.push(lastRedoAction);
+            updateUndoRedoButtons();
+        };
+
+    </script>
+</body>
+</html>
