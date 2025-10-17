@@ -13,11 +13,17 @@ exports.handler = async function(event, context) {
     }
 
     try {
+        // ---- INÍCIO DA ALTERAÇÃO ----
+        // Adicionamos MAIS cabeçalhos para a simulação ficar mais robusta.
         const headers = {
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Referer': 'https://www.loteriasonline.caixa.gov.br/', // O mais importante
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         };
 
         const response = await fetch(officialApiUrl, { headers: headers });
+        // ---- FIM DA ALTERAÇÃO ----
         
         if (!response.ok) {
             throw new Error(`Falha ao buscar dados para o jogo ${game} com status ${response.status}`);
